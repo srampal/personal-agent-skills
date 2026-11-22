@@ -20,6 +20,35 @@ either:
 Because every skill is a self-contained folder with a `SKILL.md`, both approaches
 work without modifying the skill.
 
+## One-step install: `scripts/install-skills.sh`
+
+Rather than linking skills one at a time, `scripts/install-skills.sh` exposes
+**all** of them in a single command. For every skill it creates one entry —
+`<dest>/<skill-name>` → `<repo>/skills/<category>/<skill-name>` — in the target
+skills directory.
+
+```bash
+./scripts/install-skills.sh --claude           # ~/.claude/skills (all projects)
+./scripts/install-skills.sh --claude-project   # ./.claude/skills (this repo only)
+./scripts/install-skills.sh --dest <path>      # any runtime's skills directory
+# flags: --copy, --dry-run, --uninstall, --help
+```
+
+### Why it flattens the category folders
+
+This repo groups skills under categories (`skills/meta/`, `skills/development/`,
+…), but **Claude Code only auto-loads skills that are direct children of the
+skills directory at startup** — `~/.claude/skills/<name>/SKILL.md`. Skills nested
+one level deeper (e.g. under a `meta/` folder inside the skills dir) are *not*
+loaded at startup; they are discovered only on demand (when the agent happens to
+work inside that subdirectory, or via `/add-dir`). To make every skill reliably
+available from the start, the installer "flattens": it links each skill directly
+as `<dest>/<skill-name>`, regardless of its category here. (Verified against
+Claude Code docs, 2026-11; confirm for your version.)
+
+Symlinks are fully supported by Claude Code and de-duplicated if multiple entries
+resolve to the same target, so re-running the installer is safe.
+
 ### Symlinks vs. copy-based installation
 
 | Aspect | Symlink | Copy |
@@ -56,25 +85,37 @@ Always confirm the behavior for the runtime and version you are using.
 
 ### Claude Code
 
-- Personal skills are commonly discovered under `~/.claude/skills/`, and projects
-  can carry skills under `.claude/skills/`. **Verify for your version.**
-- Example (symlink a single skill):
+Verified against Claude Code documentation (2026-11); confirm for your version:
 
-  ```bash
-  mkdir -p ~/.claude/skills
-  ln -s "$PWD/skills/development/git-worktree-management" \
-        ~/.claude/skills/git-worktree-management
-  ```
+- **Personal / user-level skills:** `~/.claude/skills/<skill-name>/SKILL.md` —
+  available in **all projects** on the machine.
+- **Project-level skills:** `.claude/skills/<skill-name>/SKILL.md` in the repo —
+  scoped to that repository (also discovered in parent dirs up to the repo root).
+- **Startup discovery is flat:** only direct children of the skills directory
+  load at startup. Deeper nesting (category folders) loads only on demand or via
+  `/add-dir`. → prefer the flattening installer (above).
+- **Symlinks are supported** and de-duplicated across locations.
+- Discovery is driven by each `SKILL.md`'s `name`/`description` frontmatter.
 
-- Claude Code reads `SKILL.md` frontmatter (`name`, `description`) for discovery.
+Fastest path — install everything at the user level once:
+
+```bash
+./scripts/install-skills.sh --claude
+```
 
 ### OpenAI Codex
 
-- Supports the Agent Skills standard. **Its exact skills directory and discovery
-  behavior should be verified against current Codex documentation before relying
-  on it** — do not assume it matches Claude Code's layout.
-- Once the correct location is known, symlink or copy the skill directory there
-  the same way.
+- Codex supports the Agent Skills (`SKILL.md`) standard — the same canonical
+  skill file is portable to it. OpenAI also publishes a skills catalog at
+  `github.com/openai/skills`.
+- **Its exact on-disk skills directory is not clearly documented and is
+  UNVERIFIED here.** The installer's `--codex` flag uses a placeholder
+  (`~/.codex/skills`) only; confirm the real location against current Codex
+  documentation and prefer:
+
+  ```bash
+  ./scripts/install-skills.sh --dest <verified-codex-skills-dir>
+  ```
 
 ### OpenClaw
 

@@ -55,6 +55,7 @@ personal-agent-skills/
 │   └── SKILL-template.md     # Starting point for new skills
 │
 ├── scripts/
+│   ├── install-skills.sh     # One-step: link all skills into a runtime
 │   ├── validate-skills.sh    # Structural + metadata checks
 │   └── list-skills.sh        # Enumerate skills and descriptions
 │
@@ -69,21 +70,42 @@ Add categories freely; the structure is designed to grow without rework.
 
 ## How to use the skills
 
-How a skill becomes *available* to an agent depends on the runtime. In general:
+### One-step install (recommended)
 
-1. Make the skill directory visible to the runtime's skill discovery mechanism
-   (typically a symlink or copy into a runtime-specific skills directory — see
-   [`docs/agent-compatibility.md`](docs/agent-compatibility.md)).
-2. The agent reads the `description` in each `SKILL.md` to decide when the skill
-   is relevant, then loads the full instructions on demand.
+Use `scripts/install-skills.sh` to expose **every** skill in this repo to a
+runtime in a single command. It creates one symlink per skill into the runtime's
+skills directory (flattening the category folders to `<dest>/<skill-name>`, the
+layout runtimes expect), so you never link skills one at a time.
+
+```bash
+# Claude Code — user level: available in EVERY project on this machine
+./scripts/install-skills.sh --claude
+
+# Claude Code — only the repo you run it from (writes ./.claude/skills)
+./scripts/install-skills.sh --claude-project
+
+# Any other runtime — point it at that runtime's skills directory
+./scripts/install-skills.sh --dest /path/to/runtime/skills
+```
+
+Because it symlinks, edits you make here show up everywhere immediately. Useful
+flags: `--copy` (isolated copies instead of links, e.g. for sandboxes/Windows),
+`--dry-run` (preview), `--uninstall` (remove only what it installed). Run
+`./scripts/install-skills.sh --help` for details.
+
+> **Install once at the user level and you're done** — with `--claude`, all
+> skills become available in whatever repo you later open Claude Code in; there
+> is no per-repo step. Use `--claude-project` only when you want a skill scoped
+> to a single repository.
 
 > This repository does **not** claim that every agent automatically discovers
-> skills from this folder. Discovery and installation are runtime-specific.
+> skills. Discovery and installation are runtime-specific — the installer just
+> puts the files where a runtime looks. Verify the destination path for your
+> runtime; see [`docs/agent-compatibility.md`](docs/agent-compatibility.md).
 
-### Example: Claude Code
+### Manual install
 
-Claude Code discovers personal skills under `~/.claude/skills/`. You can expose a
-skill by symlinking it (verify the path for your version):
+If you prefer, symlink or copy an individual skill yourself:
 
 ```bash
 mkdir -p ~/.claude/skills
@@ -91,11 +113,8 @@ ln -s "$PWD/skills/development/git-worktree-management" \
       ~/.claude/skills/git-worktree-management
 ```
 
-### Example: other runtimes (Codex, OpenClaw, Hermes, …)
-
-The same canonical skill directory can be symlinked or copied into each
-runtime's skills location. Exact paths and supported features vary and should be
-verified per runtime — see [`docs/agent-compatibility.md`](docs/agent-compatibility.md).
+Either way, the agent reads each `SKILL.md`'s `description` to decide when the
+skill is relevant, then loads the full instructions on demand.
 
 ## How to add a new skill
 
